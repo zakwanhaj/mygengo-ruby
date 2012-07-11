@@ -7,10 +7,10 @@ module MyGengo
 	module Config
 		# API url endpoints; replace the version at function call time to
 		# allow for function-by-function differences in versioning.
-		API_HOST = 'api.mygengo.com'
+		API_HOST = 'api.gengo.com'
 		SANDBOX_API_HOST = 'api.sandbox.mygengo.com'
 
 		# Pretty self explanatory.
-		VERSION = '1.8'
+		VERSION = '1.9'
 	end
 end

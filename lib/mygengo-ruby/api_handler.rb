@@ -7,9 +7,11 @@ require 'cgi'
 require 'json'
 require 'openssl'
 require 'time'
+require 'net/http/post/multipart'
+require 'mime/types'
 
 module MyGengo
-	
+
 	# The only real class that ever needs to be instantiated.
 	class API
 		attr_accessor :api_host
@@ -63,16 +65,16 @@ module MyGengo
 		def get_from_mygengo(endpoint, params = {})
 			# Do this small check here...
             is_delete = params.delete(:is_delete)
-            
+
             # The first part of the object we're going to encode and use in our request to myGengo. The signing process
 			# is a little annoying at the moment, so bear with us...
 			query = {
 				:api_key => @opts[:public_key],
 				:ts => Time.now.gmtime.to_i.to_s
 			}
-			
+
 			endpoint << "?api_sig=" + signature_of(query[:ts])
-			endpoint << '&' + query.map { |k, v| "#{k}=#{urlencode(v)}" }.join('&')	
+			endpoint << '&' + query.map { |k, v| "#{k}=#{urlencode(v)}" }.join('&')
 
             uri = "/v#{@opts[:api_version]}/" + endpoint
             headers = {
@@ -109,10 +111,10 @@ module MyGengo
 		# <tt>endpoint</tt> - String/URL to post data to.
 		# <tt>params</tt> - Data necessary for request (keys, etc). Generally taken care of by the requesting instance.
 		def send_to_mygengo(endpoint, params = {})
-		  
+
 		  # Check if this is a put
       is_put = params.delete(:is_put)
-		  
+
 			query = {
 				:api_key => @opts[:public_key],
 				:data => params.to_json.gsub('"', '\"'),
@@ -126,7 +128,7 @@ module MyGengo
 		  else
 			  request = Net::HTTP::Post.new(url.path)
 		  end
-	
+
 			request.add_field('Accept', 'application/json')
 			request.add_field('User-Agent', @opts[:user_agent])
 
@@ -137,7 +139,7 @@ module MyGengo
 				"data" => urlencode(params.to_json.gsub('\\', '\\\\')),
 				"ts" => Time.now.gmtime.to_i.to_s
 			}.map { |k, v| "#{k}=#{v}" }.flatten.join('&')
-			
+
 			if @debug
 				http.set_debug_output($stdout)
 			end
@@ -159,179 +161,244 @@ module MyGengo
 			end
 		end
 
-		# Returns a Ruby-hash of the stats for the current account. No arguments required!
+		# The "UPLOAD" method; handles sending a file to the quote method
 		#
 		# Options:
-		# <tt>None</tt> - N/A
-		def getAccountStats(params = {})
-			self.get_from_mygengo('account/stats', params)
-		end
+		# <tt>endpoint</tt> - String/URL to post data to.
+		# <tt>params</tt> - Data necessary for request (keys, etc). Generally taken care of by the requesting instance.
+		def upload_to_mygengo(endpoint, params = {})
 
-		# Returns a Ruby-hash of the balance for the authenticated account. No args required!
-		#
-		# Options:
-		# <tt>None</tt> - N/A
-		def getAccountBalance(params = {})
-			self.get_from_mygengo('account/balance', params)
-		end
+		  # prepare the file_hash and append file_key to each job payload
+          files_hash = params[:jobs].each_value.reduce({}) do |hash_thus_far, job_values|
+            job_mime_type = MIME::Types.type_for(job_values[:file_path]).first.content_type
+            file_hash_key = "file_#{hash_thus_far.length.to_s}".to_sym
+            job_values[:file_key] = file_hash_key
+            hash_thus_far[file_hash_key] = UploadIO.new(File.open(job_values[:file_path]), job_mime_type, File.basename(job_values[:file_path]))
+            hash_thus_far
+          end
 
-		# Posts a translation job over to myGengo, returns a response indicating whether the submission was
-		# successful or not. Param list is quite expansive here, pay attention...
-		#
-		# Options:
-		# <tt>job</tt> - A job is a hash of data describing what you want translated. See the examples included for
-		# more information on what this should be. (type/slug/body_src/lc_src/lc_tgt/tier/auto_approve/comment/callback_url/custom_data)
-		def postTranslationJob(params = {})
-			self.send_to_mygengo('translate/job', params)
-		end
+          url = URI.parse("http://#{@api_host}/v#{@opts[:api_version]}/#{endpoint}")
 
-		# Much like the above, but takes a hash titled "jobs" that is multiple jobs, each with their own unique key.
-		#
-		# Options:
-		# <tt>jobs</tt> - "Jobs" is a hash containing further hashes; each further hash is a job. This is best seen in the example code.
-		def postTranslationJobs(params = {})
-			self.send_to_mygengo('translate/jobs', params)
-		end
+          http = Net::HTTP.new(url.host, url.port)
 
-		# Updates an already submitted job.
-		#
-		# Options:
-		# <tt>id</tt> - The ID of a job to update.
-		# <tt>action</tt> - A hash describing the update to this job. See the examples for further documentation.
-		def updateTranslationJob(params = {})
-		  params[:is_put] = true
-			self.send_to_mygengo('translate/job/:id'.gsub(':id', params.delete(:id).to_s), params)
-		end
+          call_timestamp = Time.now.gmtime.to_i.to_s
 
-		# Updates a group of already submitted jobs.
-		#
-		# Options:
-		# <tt>jobs</tt> - An Array of job objects to update (job objects or ids)
-		# <tt>action</tt> - A String describing the update to this job. "approved", "rejected", etc - see myGengo docs.
-		def updateTranslationJobs(params = {})
-		  params[:is_put] = true
-			self.send_to_mygengo('translate/jobs', {:jobs => params[:jobs], :action => params[:action]})
-		end
+			the_hash = files_hash.merge({
+				"api_sig" => signature_of(call_timestamp),
+				"api_key" => @opts[:public_key],
+				"data" =>params.to_json.gsub('\\', '\\\\'),
+				"ts" => call_timestamp
+			})
 
-		# Given an ID, pulls down information concerning that job from myGengo.
-		#
-		# <tt>id</tt> - The ID of a job to check.
-		# <tt>pre_mt</tt> - Optional, get a machine translation if the human translation is not done.
-		def getTranslationJob(params = {})
-			self.get_from_mygengo('translate/job/:id'.gsub(':id', params.delete(:id).to_s), params)
-		end
+			request = Net::HTTP::Post::Multipart.new(url.path, the_hash, {'Accept' => 'application/json', 'User-Agent' => @opts[:user_agent] })
 
-		# Pulls down a list of recently submitted jobs, allows some filters.
-		#
-		# <tt>status</tt> - Optional. "unpaid", "available", "pending", "reviewable", "approved", "rejected", or "canceled".
-		# <tt>timestamp_after</tt> - Optional. Epoch timestamp from which to filter submitted jobs.
-		# <tt>count</tt> - Optional. Defaults to 10.
-		def getTranslationJobs(params = {})
-			if params[:ids] and params[:ids].kind_of?(Array)
-				params[:ids] = params[:ids].map { |i| i.to_s() }.join(',')
-				self.get_from_mygengo('translate/jobs/:ids'.gsub(':ids', params.delete(:ids)))
-			else
-			  self.get_from_mygengo('translate/jobs', params)
+			if @debug
+				http.set_debug_output($stdout)
+			end
+
+			resp = http.request(request)
+
+			case resp
+				when Net::HTTPSuccess, Net::HTTPRedirection
+					json = JSON.parse(resp.body)
+
+					if json['opstat'] != 'ok'
+						raise MyGengo::Exception.new(json['opstat'], json['err']['code'].to_i, json['err']['msg'])
+					end
+
+					# Return it if there are no problems, nice...
+					json
+				else
+					resp.error!
 			end
 		end
 
-		# Pulls a group of jobs that were previously submitted together.
-		#
-		# <tt>id</tt> - Required, the ID of a job that you want the batch/group of.
-		def getTranslationJobBatch(params = {})
-			self.get_from_mygengo('translate/jobs/group/:group_id'.gsub(':group_id', params.delete(:group_id).to_s), params)
-		end
-	
-		# Mirrors the bulk Translation call, but just returns an estimated cost.
-		def determineTranslationCost(params = {})
-			self.send_to_mygengo('translate/service/quote', params)
-		end
+        # Returns a Ruby-hash of the stats for the current account. No arguments required!
+        #
+        # Options:
+        # <tt>None</tt> - N/A
+        def getAccountStats(params = {})
+          self.get_from_mygengo('account/stats', params)
+        end
 
-		# Post a comment for a translator or myGengo on a job.
-		#
-		# Options:
-		# <tt>id</tt> - The ID of the job you're commenting on.
-		# <tt>comment</tt> - The comment to put on the job.
-		def postTranslationJobComment(params = {})
-			self.send_to_mygengo('translate/job/:id/comment'.gsub(':id', params.delete(:id).to_s), params)
-		end
+        # Returns a Ruby-hash of the balance for the authenticated account. No args required!
+        #
+        # Options:
+        # <tt>None</tt> - N/A
+        def getAccountBalance(params = {})
+          self.get_from_mygengo('account/balance', params)
+        end
 
-		# Get all comments (the history) from a given job.
-		#
-		# Options:
-		# <tt>id</tt> - The ID of the job to get comments for.
-		def getTranslationJobComments(params = {})
-			self.get_from_mygengo('translate/job/:id/comments'.gsub(':id', params.delete(:id).to_s), params)
-		end
+        # Posts a translation job over to myGengo, returns a response indicating whether the submission was
+        # successful or not. Param list is quite expansive here, pay attention...
+        #
+        # Options:
+        # <tt>job</tt> - A job is a hash of data describing what you want translated. See the examples included for
+        # more information on what this should be. (type/slug/body_src/lc_src/lc_tgt/tier/auto_approve/comment/callback_url/custom_data)
+        def postTranslationJob(params = {})
+          self.send_to_mygengo('translate/job', params)
+        end
 
-		# Returns the feedback you've submitted for a given job.
-		#
-		# Options:
-		# <tt>id</tt> - The ID of the translation job you're retrieving comments from.
-		def getTranslationJobFeedback(params = {})
-			self.get_from_mygengo('translate/job/:id/feedback'.gsub(':id', params.delete(:id).to_s), params)
-		end
+        # Much like the above, but takes a hash titled "jobs" that is multiple jobs, each with their own unique key.
+        #
+        # Options:
+        # <tt>jobs</tt> - "Jobs" is a hash containing further hashes; each further hash is a job. This is best seen in the example code.
+        def postTranslationJobs(params = {})
+          self.send_to_mygengo('translate/jobs', params)
+        end
 
-		# Gets a list of the revision resources for a job. Revisions are created each time a translator updates the text.
-		#
-		# Options:
-		# <tt>id</tt> - The ID of the translation job you're getting revisions from.
-		def getTranslationJobRevisions(params = {})
-			self.get_from_mygengo('translate/job/:id/revisions'.gsub(':id', params.delete(:id).to_s), params)
-		end
+        # Updates an already submitted job.
+        #
+        # Options:
+        # <tt>id</tt> - The ID of a job to update.
+        # <tt>action</tt> - A hash describing the update to this job. See the examples for further documentation.
+        def updateTranslationJob(params = {})
+          params[:is_put] = true
+          self.send_to_mygengo('translate/job/:id'.gsub(':id', params.delete(:id).to_s), params)
+        end
 
-		# Get a specific revision to a job.
-		# 
-		# Options:
-		# <tt>id</tt> - The ID of the translation job you're getting revisions from.
-		# <tt>rev_id</tt> - The ID of the revision you're looking up.
-		def getTranslationJobRevision(params = {})
-			self.get_from_mygengo('translate/job/:id/revisions/:revision_id'.gsub(':id', params.delete(:id).to_s).gsub(':revision_id', params.delete(:rev_id).to_s), params)
-		end
+        # Updates a group of already submitted jobs.
+        #
+        # Options:
+        # <tt>jobs</tt> - An Array of job objects to update (job objects or ids)
+        # <tt>action</tt> - A String describing the update to this job. "approved", "rejected", etc - see myGengo docs.
+        def updateTranslationJobs(params = {})
+          params[:is_put] = true
+          self.send_to_mygengo('translate/jobs', {:jobs => params[:jobs], :action => params[:action]})
+        end
 
-		# Returns a preview image for a job.
-		#
-		# Options:
-		# <tt>id</tt> - The ID of the job you want a preview image of.
-		def getTranslationJobPreviewImage(params = {})
-			self.get_from_mygengo('translate/job/:id/preview'.gsub(':id', params.delete(:id).to_s), params)
-		end
+        # Given an ID, pulls down information concerning that job from myGengo.
+        #
+        # <tt>id</tt> - The ID of a job to check.
+        # <tt>pre_mt</tt> - Optional, get a machine translation if the human translation is not done.
+        def getTranslationJob(params = {})
+          self.get_from_mygengo('translate/job/:id'.gsub(':id', params.delete(:id).to_s), params)
+        end
 
-		# Deletes a job.
-		#
-		# Options:
-		# <tt>id</tt> - The ID of the job you want to delete.
-		def deleteTranslationJob(params = {})
-            params[:is_delete] = true
-			self.get_from_mygengo('translate/job/:id'.gsub(':id', params.delete(:id).to_s), params)
-		end
+        # Pulls down a list of recently submitted jobs, allows some filters.
+        #
+        # <tt>status</tt> - Optional. "unpaid", "available", "pending", "reviewable", "approved", "rejected", or "canceled".
+        # <tt>timestamp_after</tt> - Optional. Epoch timestamp from which to filter submitted jobs.
+        # <tt>count</tt> - Optional. Defaults to 10.
+        def getTranslationJobs(params = {})
+          if params[:ids] and params[:ids].kind_of?(Array)
+            params[:ids] = params[:ids].map { |i| i.to_s() }.join(',')
+            self.get_from_mygengo('translate/jobs/:ids'.gsub(':ids', params.delete(:ids)))
+          else
+            self.get_from_mygengo('translate/jobs', params)
+          end
+        end
 
-		# Deletes multiple jobs.
-		#
-		# Options:
-		# <tt>ids</tt> - An Array of job IDs you want to delete.
-		def deleteTranslationJobs(params = {})
-			if params[:ids] and params[:ids].kind_of?(Array)
-				params[:job_ids] = params[:ids].map { |i| i.to_s() }.join(',')
-				params.delete(:ids)
-			end
-			
-            params[:is_delete] = true
-			self.get_from_mygengo('translate/jobs', params)
-		end
+        # Pulls a group of jobs that were previously submitted together.
+        #
+        # <tt>id</tt> - Required, the ID of a job that you want the batch/group of.
+        def getTranslationJobBatch(params = {})
+          self.get_from_mygengo('translate/jobs/group/:group_id'.gsub(':group_id', params.delete(:group_id).to_s), params)
+        end
 
-		# Gets information about currently supported language pairs.
-		#
-		# Options:
-		# <tt>lc_src</tt> - Optional language code to filter on.
-		def getServiceLanguagePairs(params = {})
-            self.get_from_mygengo('translate/service/language_pairs', params)
-		end
+        # Pulls a group of jobs that were previously submitted together.
+        #
+        # <tt>id</tt> - Required, the ID of a job that you want the batch/group of.
+        def getTranslationOrderJobs(params = {})
+          self.get_from_mygengo('translate/order/:order_id'.gsub(':order_id', params.delete(:order_id).to_s), params)
+        end
 
-		# Pulls down currently supported languages.
-		def getServiceLanguages(params = {})
-			self.get_from_mygengo('translate/service/languages', params)
-		end
-	end
+        # Mirrors the bulk Translation call, but just returns an estimated cost.
+        def determineTranslationCost(params = {})
+          is_upload = params.delete(:is_upload)
+
+          if is_upload
+            self.upload_to_mygengo('translate/service/quote/file', params)
+          else
+            self.send_to_mygengo('translate/service/quote', params)
+          end
+        end
+
+        # Post a comment for a translator or myGengo on a job.
+        #
+        # Options:
+        # <tt>id</tt> - The ID of the job you're commenting on.
+        # <tt>comment</tt> - The comment to put on the job.
+        def postTranslationJobComment(params = {})
+          self.send_to_mygengo('translate/job/:id/comment'.gsub(':id', params.delete(:id).to_s), params)
+        end
+
+        # Get all comments (the history) from a given job.
+        #
+        # Options:
+        # <tt>id</tt> - The ID of the job to get comments for.
+        def getTranslationJobComments(params = {})
+          self.get_from_mygengo('translate/job/:id/comments'.gsub(':id', params.delete(:id).to_s), params)
+        end
+
+        # Returns the feedback you've submitted for a given job.
+        #
+        # Options:
+        # <tt>id</tt> - The ID of the translation job you're retrieving comments from.
+        def getTranslationJobFeedback(params = {})
+          self.get_from_mygengo('translate/job/:id/feedback'.gsub(':id', params.delete(:id).to_s), params)
+        end
+
+        # Gets a list of the revision resources for a job. Revisions are created each time a translator updates the text.
+        #
+        # Options:
+        # <tt>id</tt> - The ID of the translation job you're getting revisions from.
+        def getTranslationJobRevisions(params = {})
+          self.get_from_mygengo('translate/job/:id/revisions'.gsub(':id', params.delete(:id).to_s), params)
+        end
+
+        # Get a specific revision to a job.
+        #
+        # Options:
+        # <tt>id</tt> - The ID of the translation job you're getting revisions from.
+        # <tt>rev_id</tt> - The ID of the revision you're looking up.
+        def getTranslationJobRevision(params = {})
+          self.get_from_mygengo('translate/job/:id/revisions/:revision_id'.gsub(':id', params.delete(:id).to_s).gsub(':revision_id', params.delete(:rev_id).to_s), params)
+        end
+
+        # Returns a preview image for a job.
+        #
+        # Options:
+        # <tt>id</tt> - The ID of the job you want a preview image of.
+        def getTranslationJobPreviewImage(params = {})
+          self.get_from_mygengo('translate/job/:id/preview'.gsub(':id', params.delete(:id).to_s), params)
+        end
+
+        # Deletes a job.
+        #
+        # Options:
+        # <tt>id</tt> - The ID of the job you want to delete.
+        def deleteTranslationJob(params = {})
+                params[:is_delete] = true
+          self.get_from_mygengo('translate/job/:id'.gsub(':id', params.delete(:id).to_s), params)
+        end
+
+        # Deletes multiple jobs.
+        #
+        # Options:
+        # <tt>ids</tt> - An Array of job IDs you want to delete.
+        def deleteTranslationJobs(params = {})
+          if params[:ids] and params[:ids].kind_of?(Array)
+            params[:job_ids] = params[:ids].map { |i| i.to_s() }.join(',')
+            params.delete(:ids)
+          end
+
+                params[:is_delete] = true
+          self.get_from_mygengo('translate/jobs', params)
+        end
+
+        # Gets information about currently supported language pairs.
+        #
+        # Options:
+        # <tt>lc_src</tt> - Optional language code to filter on.
+        def getServiceLanguagePairs(params = {})
+                self.get_from_mygengo('translate/service/language_pairs', params)
+        end
+
+        # Pulls down currently supported languages.
+        def getServiceLanguages(params = {})
+          self.get_from_mygengo('translate/service/languages', params)
+        end
+      end
 
 end

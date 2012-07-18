@@ -65,6 +65,7 @@ module MyGengo
 		def get_from_mygengo(endpoint, params = {})
 			# Do this small check here...
             is_delete = params.delete(:is_delete)
+            is_get_preview = params.delete(:get_preview_image)
 
             # The first part of the object we're going to encode and use in our request to myGengo. The signing process
 			# is a little annoying at the moment, so bear with us...
@@ -92,14 +93,18 @@ module MyGengo
 				http.request(req)
 			end
 
-			json = JSON.parse(resp.body)
+			if is_get_preview.nil?
+              json = JSON.parse(resp.body)
+              if json['opstat'] != 'ok'
+                  raise MyGengo::Exception.new(json['opstat'], json['err']['code'].to_i, json['err']['msg'])
+              end
 
-			if json['opstat'] != 'ok'
-				raise MyGengo::Exception.new(json['opstat'], json['err']['code'].to_i, json['err']['msg'])
-			end
+              # Return it if there are no problems, nice...
+              return json
+            else
+              return resp.body
+            end
 
-			# Return it if there are no problems, nice...
-			json
 		end
 
 		# The "POST" method; handles shuttling up encoded job data to myGengo
@@ -361,6 +366,7 @@ module MyGengo
         # Options:
         # <tt>id</tt> - The ID of the job you want a preview image of.
         def getTranslationJobPreviewImage(params = {})
+          params[:get_preview_image] = true
           self.get_from_mygengo('translate/job/:id/preview'.gsub(':id', params.delete(:id).to_s), params)
         end
 

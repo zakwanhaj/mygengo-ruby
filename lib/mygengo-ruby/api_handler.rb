@@ -89,9 +89,12 @@ module MyGengo
                 req = Net::HTTP::Get.new(uri, headers)
             end
 
-			resp = Net::HTTP.start(@api_host, 80) do |http|
-				http.request(req)
-			end
+			http = Net::HTTP.start(@api_host, 80)
+            if @debug
+              http.set_debug_output($stdout)
+            end
+            http.read_timeout = 5*60
+            resp = http.request(req)
 
 			if is_get_preview.nil?
               json = JSON.parse(resp.body)
@@ -128,6 +131,7 @@ module MyGengo
 
 			url = URI.parse("http://#{@api_host}/v#{@opts[:api_version]}/#{endpoint}")
 			http = Net::HTTP.new(url.host, url.port)
+            http.read_timeout = 5*60
 			if is_put
 			  request = Net::HTTP::Put.new(url.path)
 		  else
@@ -185,6 +189,7 @@ module MyGengo
           url = URI.parse("http://#{@api_host}/v#{@opts[:api_version]}/#{endpoint}")
 
           http = Net::HTTP.new(url.host, url.port)
+          http.read_timeout = 5*60
 
           call_timestamp = Time.now.gmtime.to_i.to_s
 

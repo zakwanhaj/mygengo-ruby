@@ -4,10 +4,10 @@ Gem::Specification.new do |gs|
 	gs.name = "mygengo"
 	gs.version = "1.12"
 	gs.authors = [
-        "Lloyd Chan"
+        "Lloyd Chan",
 		"Ryan McGrath",
 		"Matthew Romaine",
-		"Kim Alhstrom",
+		"Kim Alhstrom"
     ]
 	gs.date = "2012-08-21"
 	gs.summary = "A library for interfacing with the Gengo Translation API."

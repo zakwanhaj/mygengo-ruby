@@ -65,7 +65,7 @@ module MyGengo
 		def get_from_mygengo(endpoint, params = {})
 			# Do this small check here...
             is_delete = params.delete(:is_delete)
-            is_get_preview = params.delete(:get_preview_image)
+            is_download_file = params.delete(:is_download)
 
             # The first part of the object we're going to encode and use in our request to myGengo. The signing process
 			# is a little annoying at the moment, so bear with us...
@@ -96,7 +96,7 @@ module MyGengo
             http.read_timeout = 5*60
             resp = http.request(req)
 
-			if is_get_preview.nil?
+			if is_download_file.nil?
               json = JSON.parse(resp.body)
               if json['opstat'] != 'ok'
                   raise MyGengo::Exception.new(json['opstat'], json['err']['code'].to_i, json['err']['msg'])
@@ -371,7 +371,7 @@ module MyGengo
         # Options:
         # <tt>id</tt> - The ID of the job you want a preview image of.
         def getTranslationJobPreviewImage(params = {})
-          params[:get_preview_image] = true
+          params[:is_download] = true
           self.get_from_mygengo('translate/job/:id/preview'.gsub(':id', params.delete(:id).to_s), params)
         end
 
@@ -409,6 +409,22 @@ module MyGengo
         # Pulls down currently supported languages.
         def getServiceLanguages(params = {})
           self.get_from_mygengo('translate/service/languages', params)
+        end
+
+        # Gets list of glossaries that belongs to the authenticated user
+        def getGlossaryList(params = {})
+            self.get_from_mygengo('translate/glossary', params)
+        end
+
+        # Gets one glossary that belongs to the authenticated user
+        def getGlossary(params = {})
+            self.get_from_mygengo('translate/glossary/:id'.gsub(':id', params.delete(:id).to_s), params)
+        end
+
+        # Downloads one glossary that belongs to the authenticated user
+        def getGlossaryFile(params = {})
+            params[:is_download] = true
+            self.get_from_mygengo('translate/glossary/download/:id'.gsub(':id', params.delete(:id).to_s), params)
         end
       end
 

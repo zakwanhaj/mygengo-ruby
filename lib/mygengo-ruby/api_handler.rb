@@ -179,10 +179,12 @@ module MyGengo
 
 		  # prepare the file_hash and append file_key to each job payload
           files_hash = params[:jobs].each_value.reduce({}) do |hash_thus_far, job_values|
-            job_mime_type = MIME::Types.type_for(job_values[:file_path]).first.content_type
-            file_hash_key = "file_#{hash_thus_far.length.to_s}".to_sym
-            job_values[:file_key] = file_hash_key
-            hash_thus_far[file_hash_key] = UploadIO.new(File.open(job_values[:file_path]), job_mime_type, File.basename(job_values[:file_path]))
+            if job_values[:file_path].present?
+                job_mime_type = MIME::Types.type_for(job_values[:file_path]).first.content_type
+                file_hash_key = "file_#{hash_thus_far.length.to_s}".to_sym
+                job_values[:file_key] = file_hash_key
+                hash_thus_far[file_hash_key] = UploadIO.new(File.open(job_values[:file_path]), job_mime_type, File.basename(job_values[:file_path]))
+            end
             hash_thus_far
           end
 

@@ -34,4 +34,48 @@ describe MyGengo do
         end
 
     end
+
+    context 'basic functions presence checks' do
+
+        before(:each) do
+            @gengo_client = MyGengo::API.new({
+                                  :public_key => 'your_public_key',
+                                  :private_key => 'your_private_key',
+                                  :sandbox => false,
+                                })
+        end
+
+        # To be lazy, just add the symbol of the function name in this array ;)
+        [
+            :getAccountStats,
+            :getAccountBalance,
+            :postTranslationJob,
+            :postTranslationJobs,
+            :updateTranslationJob,
+            :updateTranslationJobs,
+            :getTranslationJob,
+            :getTranslationJobs,
+            :getTranslationJobBatch,
+            :getTranslationOrderJobs,
+            :determineTranslationCost,
+            :postTranslationJobComment,
+            :getTranslationJobComments,
+            :getTranslationJobFeedback,
+            :getTranslationJobRevisions,
+            :getTranslationJobRevision,
+            :getTranslationJobPreviewImage,
+            :deleteTranslationJob,
+            :deleteTranslationJobs,
+            :getServiceLanguagePairs,
+            :getServiceLanguages,
+            :getGlossaryList,
+            :getGlossary,
+            :getGlossaryFile
+        ].each do |function|
+            it "should respond to .#{function.to_s}" do
+                @gengo_client.should respond_to(function)
+            end
+        end
+
+    end
 end

@@ -1,4 +1,4 @@
-[![Build Status](https://secure.travis-ci.org/[YOUR_GITHUB_USERNAME]/[YOUR_PROJECT_NAME].png)](http://travis-ci.org/myGengo/mygengo-ruby
+https://secure.travis-ci.org/myGengo/mygengo-ruby.png
 
 myGengo Ruby Library (for the [myGengo API](http://mygengo.com/))
 ========================================================================================================

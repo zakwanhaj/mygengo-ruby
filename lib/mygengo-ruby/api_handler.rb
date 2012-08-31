@@ -18,7 +18,7 @@ module MyGengo
 		attr_accessor :debug
 		attr_accessor :client_info
 
-		# Creates a new API handler to shuttle calls/jobs/etc over to the myGengo translation API.
+		# Creates a new API handler to shuttle calls/jobs/etc over to the Gengo translation API.
 		#
 		# Options:
 		# <tt>opts</tt> - A hash containing the api key, the api secret key, the API version (defaults to 1), whether to use
@@ -30,7 +30,7 @@ module MyGengo
 				:private_key => '',
 				:api_version => '1.1',
 				:sandbox => false,
-				:user_agent => "myGengo Ruby Library; Version #{MyGengo::Config::VERSION}; http://mygengo.com/;",
+				:user_agent => "Gengo Ruby Library; Version #{MyGengo::Config::VERSION}; http://gengo.com/;",
 				:debug => false,
 			}.merge(opts)
 
@@ -43,7 +43,7 @@ module MyGengo
 		end
 
 		# This is... hilariously awkward, but Ruby escapes things very differently from PHP/etc. This causes
-		# issues with de-escaping things on the backend over at myGengo; in the future this will become obsolete,
+		# issues with de-escaping things on the backend over at Gengo; in the future this will become obsolete,
 		# but for now we'll just leave this here...
 		def urlencode(string)
 			string.gsub(/([^ a-zA-Z0-9_.-]+)/n) do
@@ -56,7 +56,7 @@ module MyGengo
 			OpenSSL::HMAC.hexdigest 'sha1', @opts[:private_key], ts
 		end
 
-		# The "GET" method; handles requesting basic data sets from myGengo and converting
+		# The "GET" method; handles requesting basic data sets from Gengo and converting
 		# the response to a Ruby hash/object.
 		#
 		# Options:
@@ -67,7 +67,7 @@ module MyGengo
             is_delete = params.delete(:is_delete)
             is_download_file = params.delete(:is_download)
 
-            # The first part of the object we're going to encode and use in our request to myGengo. The signing process
+            # The first part of the object we're going to encode and use in our request to Gengo. The signing process
 			# is a little annoying at the moment, so bear with us...
 			query = {
 				:api_key => @opts[:public_key],
@@ -110,7 +110,7 @@ module MyGengo
 
 		end
 
-		# The "POST" method; handles shuttling up encoded job data to myGengo
+		# The "POST" method; handles shuttling up encoded job data to Gengo
 		# for translation and such. Somewhat similar to the above methods, but depending on the scenario
 		# can get some strange exceptions, so we're gonna keep them fairly separate for the time being. Consider
 		# for a merger down the road...
@@ -241,7 +241,7 @@ module MyGengo
           self.get_from_mygengo('account/balance', params)
         end
 
-        # Posts a translation job over to myGengo, returns a response indicating whether the submission was
+        # Posts a translation job over to Gengo, returns a response indicating whether the submission was
         # successful or not. Param list is quite expansive here, pay attention...
         #
         # Options:
@@ -273,13 +273,13 @@ module MyGengo
         #
         # Options:
         # <tt>jobs</tt> - An Array of job objects to update (job objects or ids)
-        # <tt>action</tt> - A String describing the update to this job. "approved", "rejected", etc - see myGengo docs.
+        # <tt>action</tt> - A String describing the update to this job. "approved", "rejected", etc - see Gengo docs.
         def updateTranslationJobs(params = {})
           params[:is_put] = true
           self.send_to_mygengo('translate/jobs', {:jobs => params[:jobs], :action => params[:action]})
         end
 
-        # Given an ID, pulls down information concerning that job from myGengo.
+        # Given an ID, pulls down information concerning that job from Gengo.
         #
         # <tt>id</tt> - The ID of a job to check.
         # <tt>pre_mt</tt> - Optional, get a machine translation if the human translation is not done.
@@ -326,7 +326,7 @@ module MyGengo
           end
         end
 
-        # Post a comment for a translator or myGengo on a job.
+        # Post a comment for a translator or Gengo on a job.
         #
         # Options:
         # <tt>id</tt> - The ID of the job you're commenting on.

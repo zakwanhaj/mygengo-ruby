@@ -50,4 +50,4 @@ puts mygengo.getAccountBalance()
 
 With that, you can call any number of methods supported by this library. The entire library is rdoc supported,
 so you can look at more method information there - there's also a full suite of test code/examples, located in the 'examples'
-directory. Good luck!
+directory. Enjoy!

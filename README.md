@@ -1,15 +1,15 @@
 [![Build Status](https://secure.travis-ci.org/myGengo/mygengo-ruby.png)](http://travis-ci.org/myGengo/mygengo-ruby)
-myGengo Ruby Library (for the [myGengo API](http://mygengo.com/))
+myGengo Ruby Library (for the [Gengo API](http://gengo.com/))
 ========================================================================================================
 Translating your tools and products helps people all over the world access them; this is, of course, a
-somewhat tricky problem to solve. **[myGengo](http://mygengo.com/)** is a service that offers human-translation
+somewhat tricky problem to solve. **[Gengo](http://gengo.com/)** is a service that offers human-translation
 (which is often a higher quality than machine translation), and an API to manage sending in work and watching
 jobs. This is a ruby interface to make using the API simpler (some would say incredibly easy). 
 
 
 Installation & Requirements
 -------------------------------------------------------------------------------------------------------
-Installing myGengo is fairly simple:
+Installing Gengo is fairly simple:
 
     gem install mygengo
 
@@ -17,14 +17,14 @@ Installing myGengo is fairly simple:
 Tests - Running Them, etc
 ------------------------------------------------------------------------------------------------------
 myGengo has a full suite of tests, however they're not currently automated. Each script in the _examples_
-directory tests a different myGengo API endpoint; run against those if you wish to test for now.
+directory tests a different Gengo API endpoint; run against those if you wish to test for now.
 
 Question, Comments, Complaints, Praise?
 ------------------------------------------------------------------------------------------------------
 If you have questions or comments and would like to reach us directly, please feel free to do
 so at the following outlets. We love hearing from developers!
 
-Email: api [at] mygengo dot com  
+Email: api [at] gengo dot com  
 Twitter: **[@mygengo_dev](http://twitter.com/mygengo_dev)**  
 
 If you come across any issues, please file them on the **[Github project issue tracker](https://github.com/myGengo/mygengo-ruby/issues)**. Thanks!

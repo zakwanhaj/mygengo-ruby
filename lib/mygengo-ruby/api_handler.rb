@@ -69,10 +69,14 @@ module MyGengo
 
             # The first part of the object we're going to encode and use in our request to Gengo. The signing process
 			# is a little annoying at the moment, so bear with us...
-			query = {
-				:api_key => @opts[:public_key],
-				:ts => Time.now.gmtime.to_i.to_s
-			}
+			query = params.reduce({}) {|hash_thus_far, (param_key, param_value)|
+              hash_thus_far.merge(
+                  param_key.to_sym => param_value.to_s
+              )
+            }
+
+            query[:api_key] = @opts[:public_key]
+            query[:ts] = Time.now.gmtime.to_i.to_s
 
 			endpoint << "?api_sig=" + signature_of(query[:ts])
 			endpoint << '&' + query.map { |k, v| "#{k}=#{urlencode(v)}" }.join('&')

@@ -101,12 +101,6 @@ describe MyGengo do
       @useful_response_body = resp['response']
     end
 
-    it "should have user_since as a Fixnum greater than 0" do
-      user_since = @useful_response_body['user_since']
-      user_since.should be_an_instance_of(Fixnum)
-      user_since.should be > 0
-    end
-
     it "should have credits_spent as a String" do
       credits_spent = @useful_response_body['credits_spent']
       credits_spent.should be_an_instance_of(String)

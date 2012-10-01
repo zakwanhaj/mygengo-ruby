@@ -2,18 +2,18 @@ require 'rake'
 
 Gem::Specification.new do |gs|
 	gs.name = "mygengo"
-	gs.version = "1.13"
+	gs.version = "1.14"
 	gs.authors = [
         "Lloyd Chan",
 		"Ryan McGrath",
 		"Matthew Romaine",
 		"Kim Alhstrom"
     ]
-	gs.date = "2012-08-30"
+	gs.date = "2012-10-01"
 	gs.summary = "A library for interfacing with the Gengo Translation API."
 	gs.description = "Gengo is a service that offers various translation APIs, both machine and high quality human-sourced. The Gengo gem lets you interface with the Gengo REST API (http://gengo.com/services/api/dev-docs/)."
 	gs.email = "api@gengo.com"
-	gs.homepage = "http://gengo.com/services/api/dev-docs/"
+	gs.homepage = "http://developers.gengo.com"
 	gs.files = FileList['lib/**/*.rb', 'licenses/*', 'bin/*', '[A-Z]*', 'test/**/*'].to_a
 	gs.has_rdoc = true
 

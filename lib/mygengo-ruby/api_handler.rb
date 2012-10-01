@@ -1,4 +1,4 @@
-# Encoding: UTF-8
+# encoding: UTF-8
 
 require 'rubygems'
 require 'net/http'
@@ -42,13 +42,9 @@ module MyGengo
 			@client_info = {"VERSION" => MyGengo::Config::VERSION}
 		end
 
-		# This is... hilariously awkward, but Ruby escapes things very differently from PHP/etc. This causes
-		# issues with de-escaping things on the backend over at Gengo; in the future this will become obsolete,
-		# but for now we'll just leave this here...
+        # Use CGI escape to escape a string
 		def urlencode(string)
-			string.gsub(/([^ a-zA-Z0-9_.-]+)/n) do
-				'%' + $1.unpack('H2' * $1.size).join('%').upcase
-			end.tr(' ', '+')
+			CGI::escape(string)
 		end
 
 		# Creates an HMAC::SHA1 signature, signing the timestamp with the private key.

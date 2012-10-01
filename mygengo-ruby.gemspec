@@ -2,7 +2,7 @@ require 'rake'
 
 Gem::Specification.new do |gs|
 	gs.name = "mygengo"
-	gs.version = "1.14"
+	gs.version = "1.15"
 	gs.authors = [
         "Lloyd Chan",
 		"Ryan McGrath",

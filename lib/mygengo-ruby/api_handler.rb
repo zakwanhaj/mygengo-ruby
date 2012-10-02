@@ -146,7 +146,7 @@ module MyGengo
 				"api_sig" => signature_of(query[:ts]),
 				"api_key" => urlencode(@opts[:public_key]),
 				"data" => urlencode(params.to_json.gsub('\\', '\\\\')),
-				"ts" => Time.now.gmtime.to_i.to_s
+				"ts" => query[:ts].to_i.to_s
 			}.map { |k, v| "#{k}=#{v}" }.flatten.join('&')
 
 			if @debug
